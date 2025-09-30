@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>game - Title Screen</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #333;
+    }
+    #title-screen, #game-over {
+      position: absolute;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      z-index: 10;
+      background: #2C4A7C;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; color: #fff;
+    }
+    #title-screen h1 { font-size: 4rem; margin: 0 0 2rem 0; letter-spacing: 5px; }
+    #title-screen button, #game-over button {
+      font-size: 2rem; padding: 1rem 2rem; border-radius: 12px; border: none;
+      background: #1976D2; color: #fff; cursor: pointer; margin-top: 2rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2); transition: background 0.2s;
+    }
+    #title-screen button:hover, #game-over button:hover { background: #1565C0; }
+    #game-area { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+    #Background {
+      position: absolute; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: linear-gradient(to bottom, #ffffff 100%, #2C4A7C 100%);
+      z-index: 1;
+    }
+    #ground {
+      position: absolute; left: 0; top: 60%;
+      width: 100vw; height: 60px;
+      background: #1976D2; border-top: 500px solid #1976D2;
+      z-index: 2; box-shadow: 0 4px 8px rgba(44,74,124,0.2);
+    }
+    #character {
+      position: absolute; left: 50px;
+      width: 50px; height: 50px; /* standing size */
+      background: url('m/tenor.gif') no-repeat center center;
+      background-size: contain;
+      z-index: 3;
+      transition: height 0.1s, background-image 0.1s;
+    }
+    #character.crouch {
+      height: 30px; /* crouch size */
+      background: url('m/chouch.png') no-repeat center center;
+      background-size: contain;
+    }
+    .obstacle, .obstacle-flying {
+      position: absolute;
+      width: 50px; height: 50px;
+      background: url('m/obstacle.png') no-repeat center center;
+      background-size: contain;
+      z-index: 3;
+    }
+    .obstacle-flying {
+      background: url('m/obstacle.png') no-repeat center center;
+      background-size: contain;
+    }
+    #score {
+      position: absolute; top: 20px; right: 20px;
+      font-size: 24px; color: #fff;
+      background: rgba(0,0,0,0.5);
+      padding: 10px 15px; border-radius: 10px; z-index: 10;
+    }
+    #game-over { display: none; font-size: 3rem; }
+    #game-over.show { display: flex; color:blue; }
+  </style>
+</head>
+<body>
+  <div id="title-screen">
+    <h1 id="game-title">Jump</h1>
+    <button id="play-button">Play</button>
+  </div>
+  <div id="game-area">
+    <audio id="bg-music" src="m/stay.mp3" loop></audio>
+    <div id="Background"></div>
+    <div id="ground"></div>
+    <div id="character"></div>
+    <div id="score">Score: 0</div>
+    <div id="game-over">
+      Game Over
+      <button id="restart-button">Restart</button>
+    </div>
+  </div>
+  <script>
+    // Game variables
+    const OBSTACLE_WIDTH = 50;
+    const CHARACTER_WIDTH = 50;
+    const SAFE_JUMP_GAP = 60;
+    const CROUCH_HEIGHT = 30;
+    const STAND_HEIGHT = 50;
+    const FLYING_OBSTACLE_Y = 0.45; // As fraction of window height (45% from top)
+    const FLYING_OBSTACLE_PROB = 0.4; // 40% chance that a flying obstacle appears in the group
+    const FLYING_EXTRA_GAP = 200; // Large extra gap between flying and ground obstacles
+
+    const groundTop = window.innerHeight * 0.6;
+    const groundHeight = 60;
+    const character = document.getElementById('character');
+    const scoreDisplay = document.getElementById('score');
+    const gameArea = document.getElementById('game-area');
+    const gameOverScreen = document.getElementById('game-over');
+    const restartButton = document.getElementById('restart-button');
+    const titleScreen = document.getElementById('title-screen');
+    const playButton = document.getElementById('play-button');
+    const bgMusic = document.getElementById('bg-music');
+
+    let charY = groundTop - STAND_HEIGHT;
+    let velocityY = 0;
+    let gravity = 0.9;
+    let isJumping = false;
+    let isPlaying = false;
+    let isCrouching = false;
+    let score = 0;
+    let obstacles = [];
+    let obstacleInterval;
+    let animationFrame;
+    let bgX = 0, groundX = 0;
+    const bgSpeed = 0.2, groundSpeed = 1.2;
+
+    // ---- CROUCH ----
+    function setCrouch(state) {
+      isCrouching = state;
+      if (state) {
+        character.classList.add("crouch");
+        character.style.top = (groundTop - CROUCH_HEIGHT) + 'px';
+      } else {
+        character.classList.remove("crouch");
+        character.style.top = (groundTop - STAND_HEIGHT) + 'px';
+      }
+    }
+
+    // ---- SPAWN OBSTACLES ----
+    function createObstacleGroup() {
+      const groupSize = Math.random() < 0.5 ? 2 : 3;
+      const startX = window.innerWidth + 50;
+      const minGap = SAFE_JUMP_GAP;
+      const maxGap = SAFE_JUMP_GAP + 30;
+
+      let prevX = startX;
+      let hasFlying = Math.random() < FLYING_OBSTACLE_PROB;
+      // Place flying obstacle at the first or last position (never in the middle)
+      let flyingIndex = hasFlying ? (Math.random() < 0.5 ? 0 : groupSize - 1) : -1;
+
+      for (let i = 0; i < groupSize; i++) {
+        let isFlying = i === flyingIndex;
+        const obs = document.createElement('div');
+        let gap = minGap + Math.random() * (maxGap - minGap);
+
+        // Ensure a LARGE gap before/after flying obstacle if adjacent to ground obstacle
+        if (groupSize > 1) {
+          if (
+            (isFlying && i > 0) || // flying after ground
+            (!isFlying && i > 0 && (i - 1) === flyingIndex) // ground after flying
+          ) {
+            gap += FLYING_EXTRA_GAP;
+          }
+        }
+
+        obs.style.left = (prevX + gap) + 'px';
+
+        if (isFlying) {
+          obs.classList.add('obstacle-flying');
+          obs.dataset.flying = "true";
+          obs.style.top = (window.innerHeight * FLYING_OBSTACLE_Y) + 'px';
+        } else {
+          obs.classList.add('obstacle');
+          obs.dataset.flying = "false";
+          obs.style.top = (groundTop - OBSTACLE_WIDTH) + 'px';
+        }
+
+        gameArea.appendChild(obs);
+        obstacles.push(obs);
+        prevX = prevX + gap;
+      }
+    }
+
+    // ---- COLLISION ----
+    function checkCollision(charRect, obsRect, obs) {
+      // If flying obstacle, only hit if character is not crouching and rectangles overlap vertically enough
+      if (obs.classList.contains("obstacle-flying")) {
+        if (isCrouching) return false;
+        // Only count as collision if character's upper half overlaps
+        if (charRect.top + charRect.height < obsRect.top + 15) return false;
+      }
+      return !(charRect.right < obsRect.left ||
+               charRect.left > obsRect.right ||
+               charRect.bottom < obsRect.top ||
+               charRect.top > obsRect.bottom);
+    }
+
+    // ---- GAME LOOP ----
+    function gameLoop() {
+      bgX -= bgSpeed;
+      groundX -= groundSpeed;
+      document.getElementById('Background').style.backgroundPosition = `${bgX}px 0`;
+      document.getElementById('ground').style.backgroundPosition = `${groundX}px 0`;
+
+      velocityY += gravity;
+      charY += velocityY;
+      let standingHeight = isCrouching ? CROUCH_HEIGHT : STAND_HEIGHT;
+      if (charY >= groundTop - standingHeight) {
+        charY = groundTop - standingHeight;
+        velocityY = 0;
+        isJumping = false;
+      }
+      character.style.top = charY + 'px';
+
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        let obs = obstacles[i];
+        let obsLeft = parseInt(obs.style.left);
+        obsLeft -= groundSpeed * 10;
+        obs.style.left = obsLeft + 'px';
+
+        const charRect = character.getBoundingClientRect();
+        const obsRect = obs.getBoundingClientRect();
+        if (checkCollision(charRect, obsRect, obs)) {
+          endGame();
+          return;
+        }
+        if (obsLeft + OBSTACLE_WIDTH < 0) {
+          obs.remove();
+          obstacles.splice(i, 1);
+          score++;
+          scoreDisplay.textContent = "Score: " + score;
+        }
+      }
+      animationFrame = requestAnimationFrame(gameLoop);
+    }
+
+    // ---- GAME CONTROL ----
+    function resetGame() {
+      score = 0;
+      scoreDisplay.textContent = "Score: 0";
+      charY = groundTop - STAND_HEIGHT;
+      velocityY = 0;
+      isJumping = false;
+      setCrouch(false);
+      obstacles.forEach(obs => obs.remove());
+      obstacles = [];
+      gameOverScreen.classList.remove('show');
+      gameOverScreen.style.display = 'none';
+    }
+
+    function jump() {
+      if (!isJumping && isPlaying && !isCrouching) {
+        velocityY = -15;
+        isJumping = true;
+      }
+    }
+
+    function startGame() {
+      resetGame();
+      isPlaying = true;
+      titleScreen.style.display = 'none';
+      character.style.top = (groundTop - STAND_HEIGHT) + 'px';
+      obstacleInterval = setInterval(createObstacleGroup, 1800);
+      animationFrame = requestAnimationFrame(gameLoop);
+      bgMusic.currentTime = 0;
+      bgMusic.play().catch(() => {});
+    }
+
+    function endGame() {
+      isPlaying = false;
+      clearInterval(obstacleInterval);
+      cancelAnimationFrame(animationFrame);
+      gameOverScreen.classList.add('show');
+      gameOverScreen.style.display = 'flex';
+      bgMusic.pause();
+    }
+
+    // ---- EVENTS ----
+    playButton.onclick = startGame;
+    restartButton.onclick = () => {
+      startGame();
+      bgMusic.currentTime = 0;
+      bgMusic.play().catch(() => {});
+    };
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') jump();
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') setCrouch(true);
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') setCrouch(false);
+    });
+    gameArea.addEventListener('mousedown', jump);
+    gameArea.addEventListener('touchstart', jump);
+    window.addEventListener("resize", () => {
+      const newGroundTop = window.innerHeight * 0.6;
+      character.style.top = (newGroundTop - (isCrouching ? CROUCH_HEIGHT : STAND_HEIGHT)) + 'px';
+      obstacles.forEach(obs => {
+        if (obs.classList.contains('obstacle')) obs.style.top = (newGroundTop - OBSTACLE_WIDTH) + 'px';
+        if (obs.classList.contains('obstacle-flying')) obs.style.top = (window.innerHeight * FLYING_OBSTACLE_Y) + 'px';
+      });
+    });
+  </script>
+</body>
+</html>

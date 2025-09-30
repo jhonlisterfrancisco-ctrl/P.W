@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fastodo - A Fast Todo List App</title>
+    <link rel="stylesheet" href="todo.css">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar-left">
+            <div class="logo">Fastodo</div>
+            <div>
+                <h3>Filters</h3>
+                <div class="filters">
+                    <input type="text" id="search" placeholder="Search tasks...">
+                    <select id="sort">
+                        <option value="date">Sort by Date</option>
+                        <option value="priority">Sort by Priority</option>
+                        <option value="alpha">Alphabetical</option>
+                    </select>
+                    <input type="date" id="dateFilter">
+               
+           
+            <div>
+                <h3>Tags</h3>
+                <input type="text" id="tagInput" placeholder="#tag">
+            </div>
+             </div>
+              </div>
+        </aside>
+
+        <main class="main">
+            <header class="header">
+                <h1 class="title">My Tasks</h1>
+                <button onclick="toggleView()">Calendar View</button>
+            </header>
+
+            <div class="add-task">
+                <input type="text" id="newTask" placeholder="Add a new task...">
+                <input type="date" id="taskDate">
+                <button onclick="addTask()">Add</button>
+                <button id="viewAllBtn" style="background:#2196f3;">View All</button>
+            </div>
+
+            <ul class="todo-list" id="todoList"></ul>
+
+            <div class="calendar-view" id="calendarView">
+                <!-- Calendar implementation can be expanded here -->
+                <p>Calendar view placeholder. Click dates to view tasks.</p>
+            </div>
+        </main>
+
+        <aside class="sidebar-right">
+            <h3>Stats</h3>
+            <p>Completed: <span id="completedCount">0</span></p>
+            <p>Pending: <span id="pendingCount">0</span></p>
+            <h3>Priority</h3>
+            <label><input type="radio" name="priority" value="high"> High</label><br>
+            <label><input type="radio" name="priority" value="medium"> Medium</label><br>
+            <label><input type="radio" name="priority" value="low"> Low</label>
+        </aside>
+    </div>
+
+    <script>
+        // JavaScript for todo functionality, inspired by Fastodo features
+        let todos = JSON.parse(localStorage.getItem('todos')) || [];
+        let nextId = parseInt(localStorage.getItem('nextId')) || 1;
+
+        function saveTodos() {
+            localStorage.setItem('todos', JSON.stringify(todos));
+            localStorage.setItem('nextId', nextId.toString());
+        }
+
+        function addTask() {
+            const text = document.getElementById('newTask').value.trim();
+            const date = document.getElementById('taskDate').value || new Date().toISOString().split('T')[0];
+            const tag = document.getElementById('tagInput').value.trim();
+
+            if (text) {
+                const todo = {
+                    id: nextId++,
+                    text: text,
+                    completed: false,
+                    date: date,
+                    tag: tag,
+                    priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium'
+                };
+                todos.unshift(todo);
+                saveTodos();
+                renderTodos();
+                document.getElementById('newTask').value = '';
+                document.getElementById('taskDate').value = '';
+                document.getElementById('tagInput').value = '';
+            }
+        }
+
+        function toggleComplete(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                saveTodos();
+                renderTodos();
+            }
+        }
+
+        function deleteTodo(id) {
+            if (confirm('Delete this task?')) {
+                todos = todos.filter(t => t.id !== id);
+                saveTodos();
+                renderTodos();
+            }
+        }
+
+        // ✅ UPDATED: Added Edit button
+        function renderTodos() {
+            const list = document.getElementById('todoList');
+            const filteredTodos = applyFilters(todos);
+            const sortedTodos = sortTodos(filteredTodos);
+            list.innerHTML = sortedTodos.map(todo => `
+                <li class="todo-item ${todo.completed ? 'completed' : ''}">
+                    <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleComplete(${todo.id})">
+                    <div class="todo-content" id="content-${todo.id}">
+                        <div class="todo-text">${todo.text} ${todo.tag ? `<span style="color: #4caf50;">${todo.tag}</span>` : ''}</div>
+                        <div class="todo-date">${todo.date} | Priority: ${todo.priority}</div>
+                    </div>
+                    <div class="todo-actions" id="actions-${todo.id}">
+                        <button onclick="editTodo(${todo.id})">Edit</button>
+                        <button onclick="deleteTodo(${todo.id})">Delete</button>
+                    </div>
+                </li>
+            `).join('');
+
+            updateStats();
+        }
+
+        // ✅ NEW: Edit task
+        function editTodo(id) {
+            const todo = todos.find(t => t.id === id);
+            if (!todo) return;
+
+            const contentDiv = document.getElementById(`content-${id}`);
+            contentDiv.innerHTML = `
+                <input type="text" id="editText-${id}" value="${todo.text}">
+                <input type="date" id="editDate-${id}" value="${todo.date}">
+                <input type="text" id="editTag-${id}" value="${todo.tag}">
+                <select id="editPriority-${id}">
+                    <option value="high" ${todo.priority === 'high' ? 'selected' : ''}>High</option>
+                    <option value="medium" ${todo.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                    <option value="low" ${todo.priority === 'low' ? 'selected' : ''}>Low</option>
+                </select>
+            `;
+
+            const actionsDiv = document.getElementById(`actions-${id}`);
+            actionsDiv.innerHTML = `
+                <button onclick="saveEdit(${id})">Save</button>
+                <button onclick="renderTodos()">Cancel</button>
+            `;
+        }
+
+        // ✅ NEW: Save edited task
+        function saveEdit(id) {
+            const todo = todos.find(t => t.id === id);
+            if (!todo) return;
+
+            const newText = document.getElementById(`editText-${id}`).value.trim();
+            const newDate = document.getElementById(`editDate-${id}`).value;
+            const newTag = document.getElementById(`editTag-${id}`).value.trim();
+            const newPriority = document.getElementById(`editPriority-${id}`).value;
+
+            if (newText) {
+                todo.text = newText;
+                todo.date = newDate || todo.date;
+                todo.tag = newTag;
+                todo.priority = newPriority;
+                saveTodos();
+                renderTodos();
+            }
+        }
+
+        function applyFilters(todos) {
+            const search = document.getElementById('search').value.toLowerCase();
+            const dateFilter = document.getElementById('dateFilter').value;
+
+            return todos.filter(todo => {
+                const matchesSearch = todo.text.toLowerCase().includes(search) || todo.tag.toLowerCase().includes(search);
+                const matchesDate = !dateFilter || todo.date === dateFilter;
+                return matchesSearch && matchesDate;
+            });
+        }
+
+        function sortTodos(todos) {
+            const sortBy = document.getElementById('sort').value;
+            return [...todos].sort((a, b) => {
+                switch (sortBy) {
+                    case 'date':
+                        return new Date(a.date) - new Date(b.date);
+                    case 'priority':
+                        const prio = { high: 3, medium: 2, low: 1 };
+                        return prio[b.priority] - prio[a.priority];
+                    case 'alpha':
+                        return a.text.localeCompare(b.text);
+                    default:
+                        return 0;
+                }
+            });
+        }
+
+        function updateStats() {
+            const completed = todos.filter(t => t.completed).length;
+            document.getElementById('completedCount').textContent = completed;
+            document.getElementById('pendingCount').textContent = todos.length - completed;
+        }
+
+        function toggleView() {
+            const list = document.getElementById('todoList');
+            const calendar = document.getElementById('calendarView');
+            if (list.style.display === 'none') {
+                list.style.display = 'block';
+                calendar.style.display = 'none';
+            } else {
+                list.style.display = 'none';
+                calendar.style.display = 'block';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('newTask').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTask();
+        });
+
+        document.getElementById('search').addEventListener('input', renderTodos);
+        document.getElementById('dateFilter').addEventListener('change', renderTodos);
+        document.getElementById('sort').addEventListener('change', renderTodos);
+        document.getElementById('viewAllBtn').addEventListener('click', function() {
+            document.getElementById('search').value = '';
+            document.getElementById('dateFilter').value = '';
+            renderTodos();
+        });
+
+        // Initial render
+        renderTodos();
+    </script>
+</body>
+</html>

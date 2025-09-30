@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Blue Auth + Calculator</title>
+  <style>
+    body {
+      background: #0a0f1c;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+      margin: 0;
+    }
+
+    .container {
+      background: #111936;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 0 30px #00f7ff;
+      width: 340px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #00f7ff;
+    }
+
+    input {
+      width: 90%;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+
+    button {
+      width: 95%;
+      padding: 15px;
+      margin: 10px 0;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 10px;
+      background: #0a0f1c;
+      color: #00f7ff;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00f7ff, inset 0 0 5px #00f7ff;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #00f7ff;
+      color: #0a0f1c;
+      box-shadow: 0 0 20px #00f7ff;
+    }
+
+    .hidden { display: none; }
+
+    /* Calculator */
+    .calculator {
+      background: #111936;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 0 30px #00f7ff;
+      width: 320px;
+    }
+
+    .display {
+      background: #000;
+      color: #00f7ff;
+      font-size: 2.2em;
+      text-align: right;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: inset 0 0 15px #00f7ff;
+      width: 91%;
+      height: 70px;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: none;
+    }
+    .display::-webkit-scrollbar { display: none; }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+    }
+
+    .span-2 { grid-column: span 2; }
+
+    .equals {
+      background: #00f7ff;
+      color: #0a0f1c;
+      font-weight: bold;
+      box-shadow: 0 0 20px #00f7ff, inset 0 0 10px #00f7ff;
+    }
+    .equals:hover {
+      background: #0a0f1c;
+      color: #00f7ff;
+    }
+
+    .logout-btn {
+      margin-top: 15px;
+      width: auto;
+      padding: 10px 20px;
+    }
+
+    .error {
+      color: #ff4d4d;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Page -->
+  <div class="container" id="loginPage">
+    <h2>Login</h2>
+    <input type="text" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <button onclick="showSignup()">Sign Up</button>
+    <p class="error" id="loginError"></p>
+  </div>
+
+  <!-- Signup Page -->
+  <div class="container hidden" id="signupPage">
+    <h2>Sign Up</h2>
+    <input type="text" id="signupEmail" placeholder="Email">
+    <input type="password" id="signupPassword" placeholder="Password">
+    <button onclick="signup()">Create Account</button>
+    <button onclick="showLogin()">Back to Login</button>
+    <p class="error" id="signupError"></p>
+  </div>
+
+  <!-- Calculator Page -->
+  <div class="calculator hidden" id="calcPage">
+    <div class="display" id="display">0</div>
+    <div class="buttons">
+      <button onclick="append('7')">7</button>
+      <button onclick="append('8')">8</button>
+      <button onclick="append('9')">9</button>
+      <button onclick="del()">DEL</button>
+
+      <button onclick="append('4')">4</button>
+      <button onclick="append('5')">5</button>
+      <button onclick="append('6')">6</button>
+      <button onclick="append('+')">+</button>
+
+      <button onclick="append('1')">1</button>
+      <button onclick="append('2')">2</button>
+      <button onclick="append('3')">3</button>
+      <button onclick="append('-')">-</button>
+
+      <button onclick="append('.')">.</button>
+      <button onclick="append('0')">0</button>
+      <button onclick="append('/')">/</button>
+      <button onclick="append('*')">×</button>
+
+      <button class="span-2" onclick="resetCalc()">AC</button>
+      <button class="span-2 equals" onclick="calculate()">=</button>
+    </div>
+    <button class="logout-btn" onclick="logout()">Log Out</button>
+  </div>
+
+  <script>
+    let users = JSON.parse(localStorage.getItem("users")) || {};
+    let currentUser = null;
+    let display = document.getElementById('display');
+
+    // Switch pages
+    function showSignup() {
+      document.getElementById("loginPage").classList.add("hidden");
+      document.getElementById("signupPage").classList.remove("hidden");
+    }
+    function showLogin() {
+      document.getElementById("signupPage").classList.add("hidden");
+      document.getElementById("loginPage").classList.remove("hidden");
+    }
+
+    // Password validation (L.U.D.S.)
+    function isStrongPassword(pw) {
+      const lower = /[a-z]/.test(pw);
+      const upper = /[A-Z]/.test(pw);
+      const digit = /[0-9]/.test(pw);
+      const symbol = /[^A-Za-z0-9]/.test(pw);
+      return lower && upper && digit && symbol && pw.length >= 8;
+    }
+
+    // Sign up
+    function signup() {
+      const email = document.getElementById("signupEmail").value;
+      const pw = document.getElementById("signupPassword").value;
+      const error = document.getElementById("signupError");
+
+      if (!isStrongPassword(pw)) {
+        error.textContent = "Password must be 8+ chars with L.U.D.S.";
+        return;
+      }
+      if (users[email]) {
+        error.textContent = "Email already registered.";
+        return;
+      }
+      users[email] = pw;
+      localStorage.setItem("users", JSON.stringify(users));
+      error.textContent = "";
+      alert("Account created! Please login.");
+      showLogin();
+    }
+
+    // Login
+    function login() {
+      const email = document.getElementById("loginEmail").value;
+      const pw = document.getElementById("loginPassword").value;
+      const error = document.getElementById("loginError");
+
+      if (users[email] && users[email] === pw) {
+        currentUser = email;
+        document.getElementById("loginPage").classList.add("hidden");
+        document.getElementById("calcPage").classList.remove("hidden");
+        error.textContent = "";
+      } else {
+        error.textContent = "Invalid email or password.";
+      }
+    }
+
+    // Logout
+    function logout() {
+      currentUser = null;
+      document.getElementById("calcPage").classList.add("hidden");
+      document.getElementById("loginPage").classList.remove("hidden");
+    }
+
+    // Calculator
+    function append(value) {
+      if (display.innerText === "0") display.innerText = "";
+      display.innerText += value;
+      display.scrollLeft = display.scrollWidth;
+    }
+    function resetCalc() { display.innerText = "0"; }
+    function del() {
+      display.innerText = display.innerText.slice(0, -1) || "0";
+      display.scrollLeft = display.scrollWidth;
+    }
+    function calculate() {
+      try {
+        let result = eval(display.innerText.replace('×', '*'));
+        // Format result: max 12 chars, use scientific if needed
+        let resultStr = result.toString();
+        if (resultStr.length > 12) {
+          resultStr = Number(result).toExponential(6);
+        }
+        display.innerText = resultStr;
+        display.scrollLeft = display.scrollWidth;
+      } catch {
+        display.innerText = "Error";
+      }
+    }
+  </script>
+</body>
+</html>
