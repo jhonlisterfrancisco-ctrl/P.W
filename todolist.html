@@ -1,245 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fastodo - A Fast Todo List App</title>
-    <link rel="stylesheet" href="todo.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo List with Modal</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .btn {
+      margin: 5px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+    #openModalBtn {
+      display: block;
+      margin: 20px auto;
+      background: linear-gradient(45deg, #007bff, #00c6ff);
+      color: white;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    }
+    #openModalBtn:hover {
+      background: linear-gradient(45deg, #0056b3, #0096c7);
+    }
+    #todoList {
+      list-style: none;
+      padding: 0;
+    }
+    #todoList li {
+      background: #f9f9f9;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    #todoList li.done {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+    .editBtn {
+      background: linear-gradient(45deg, #17a2b8, #20c997);
+      color: white;
+    }
+    .editBtn:hover {
+      background: linear-gradient(45deg, #138496, #17a589);
+    }
+    .deleteBtn {
+      background-color: #6c757d;
+      color: white;
+      transition: background-color 0.3s ease;
+    }
+    .deleteBtn:hover {
+      background-color: #dc3545;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);
+      margin: 10% auto;
+      padding: 10px;
+      border: none;
+      width: 320px;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+      animation: fadeIn 0.3s ease;
+      color: #fff;
+    }
+    .modal-content h3 {
+      margin-top: 0;
+      text-align: center;
+      color: #fff;
+    }
+    .modal-content label {
+      display: block;
+      margin-top: 10px;
+      color: #fff;
+      font-weight: bold;
+    }
+    .modal-content input, .modal-content select {
+      width: 95%;
+      padding: 6px;
+      margin-top: 5px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      outline: none;
+      color: #333;
+    }
+    .modal-content button {
+      margin-top: 15px;
+      width: 48%;
+    }
+    #saveTaskBtn {
+      background: linear-gradient(45deg, #28a745, #4caf50);
+      color: white;
+    }
+    #saveTaskBtn:hover {
+      background: linear-gradient(45deg, #218838, #388e3c);
+    }
+    #cancelBtn {
+      background: linear-gradient(45deg, #6c757d, #868e96);
+      color: white;
+    }
+    #cancelBtn:hover {
+      background: linear-gradient(45deg, #5a6268, #495057);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <aside class="sidebar-left">
-            <div class="logo">Fastodo</div>
-            <div>
-                <h3>Filters</h3>
-                <div class="filters">
-                    <input type="text" id="search" placeholder="Search tasks...">
-                    <select id="sort">
-                        <option value="date">Sort by Date</option>
-                        <option value="priority">Sort by Priority</option>
-                        <option value="alpha">Alphabetical</option>
-                    </select>
-                    <input type="date" id="dateFilter">
-               
-           
-            <div>
-                <h3>Tags</h3>
-                <input type="text" id="tagInput" placeholder="#tag">
-            </div>
-             </div>
-              </div>
-        </aside>
+  <div class="container">
+    <h1>Todo List</h1>
+    <button id="openModalBtn" class="btn">+ Add Task</button>
+    <ul id="todoList"></ul>
+  </div>
 
-        <main class="main">
-            <header class="header">
-                <h1 class="title">My Tasks</h1>
-                <button onclick="toggleView()">Calendar View</button>
-            </header>
-
-            <div class="add-task">
-                <input type="text" id="newTask" placeholder="Add a new task...">
-                <input type="date" id="taskDate">
-                <button onclick="addTask()">Add</button>
-                <button id="viewAllBtn" style="background:#2196f3;">View All</button>
-            </div>
-
-            <ul class="todo-list" id="todoList"></ul>
-
-            <div class="calendar-view" id="calendarView">
-                <!-- Calendar implementation can be expanded here -->
-                <p>Calendar view placeholder. Click dates to view tasks.</p>
-            </div>
-        </main>
-
-        <aside class="sidebar-right">
-            <h3>Stats</h3>
-            <p>Completed: <span id="completedCount">0</span></p>
-            <p>Pending: <span id="pendingCount">0</span></p>
-            <h3>Priority</h3>
-            <label><input type="radio" name="priority" value="high"> High</label><br>
-            <label><input type="radio" name="priority" value="medium"> Medium</label><br>
-            <label><input type="radio" name="priority" value="low"> Low</label>
-        </aside>
+  <div id="taskModal" class="modal">
+    <div class="modal-content">
+      <h3 id="modalTitle">Add Task</h3>
+      <label>Task:</label>
+      <input type="text" id="taskInput">
+      <label>Due Date:</label>
+      <input type="date" id="dateInput">
+      <label>Priority:</label>
+      <select id="priorityInput">
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+      </select>
+      <div style="display:flex; justify-content:space-between;">
+        <button id="saveTaskBtn" class="btn">Save</button>
+        <button id="cancelBtn" class="btn">Cancel</button>
+      </div>
     </div>
+  </div>
 
-    <script>
-        // JavaScript for todo functionality, inspired by Fastodo features
-        let todos = JSON.parse(localStorage.getItem('todos')) || [];
-        let nextId = parseInt(localStorage.getItem('nextId')) || 1;
+  <script>
+    const todoList = document.getElementById('todoList');
+    const taskModal = document.getElementById('taskModal');
+    const openModalBtn = document.getElementById('openModalBtn');
+    const saveTaskBtn = document.getElementById('saveTaskBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const taskInput = document.getElementById('taskInput');
+    const dateInput = document.getElementById('dateInput');
+    const priorityInput = document.getElementById('priorityInput');
+    const modalTitle = document.getElementById('modalTitle');
 
-        function saveTodos() {
-            localStorage.setItem('todos', JSON.stringify(todos));
-            localStorage.setItem('nextId', nextId.toString());
+    let editIndex = null;
+
+    openModalBtn.onclick = () => {
+      modalTitle.textContent = "Add Task";
+      editIndex = null;
+      taskInput.value = "";
+      dateInput.value = "";
+      priorityInput.value = "Low";
+      taskModal.style.display = "block";
+    };
+
+    cancelBtn.onclick = () => {
+      taskModal.style.display = "none";
+    };
+
+    saveTaskBtn.onclick = () => {
+      const taskText = taskInput.value.trim();
+      const dueDate = dateInput.value;
+      const priority = priorityInput.value;
+      if (!taskText || !dueDate) return alert("Please fill in all fields");
+
+      if (editIndex === null) {
+        addTask(taskText, dueDate, priority);
+      } else {
+        updateTask(editIndex, taskText, dueDate, priority);
+      }
+      taskModal.style.display = "none";
+    };
+
+    function addTask(task, date, priority) {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <div>
+          <input type="checkbox" class="checkTask"> 
+          <strong>${task}</strong><br>
+          <small>Due: ${date} | Priority: ${priority}</small>
+        </div>
+        <div>
+          <button class="btn editBtn">Edit</button>
+          <button class="btn deleteBtn">Delete</button>
+        </div>
+      `;
+
+      li.querySelector('.editBtn').onclick = () => {
+        editIndex = li;
+        modalTitle.textContent = "Edit Task";
+        taskInput.value = task;
+        dateInput.value = date;
+        priorityInput.value = priority;
+        taskModal.style.display = "block";
+      };
+
+      li.querySelector('.deleteBtn').onclick = () => li.remove();
+
+      li.querySelector('.checkTask').onclick = (e) => {
+        if (e.target.checked) {
+          li.classList.add('done');
+        } else {
+          li.classList.remove('done');
         }
+      };
 
-        function addTask() {
-            const text = document.getElementById('newTask').value.trim();
-            const date = document.getElementById('taskDate').value || new Date().toISOString().split('T')[0];
-            const tag = document.getElementById('tagInput').value.trim();
+      todoList.appendChild(li);
+    }
 
-            if (text) {
-                const todo = {
-                    id: nextId++,
-                    text: text,
-                    completed: false,
-                    date: date,
-                    tag: tag,
-                    priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium'
-                };
-                todos.unshift(todo);
-                saveTodos();
-                renderTodos();
-                document.getElementById('newTask').value = '';
-                document.getElementById('taskDate').value = '';
-                document.getElementById('tagInput').value = '';
-            }
+    function updateTask(li, task, date, priority) {
+      li.querySelector('div').innerHTML = `
+        <input type="checkbox" class="checkTask"> 
+        <strong>${task}</strong><br>
+        <small>Due: ${date} | Priority: ${priority}</small>
+      `;
+      li.querySelector('.editBtn').onclick = () => {
+        editIndex = li;
+        modalTitle.textContent = "Edit Task";
+        taskInput.value = task;
+        dateInput.value = date;
+        priorityInput.value = priority;
+        taskModal.style.display = "block";
+      };
+      li.querySelector('.checkTask').onclick = (e) => {
+        if (e.target.checked) {
+          li.classList.add('done');
+        } else {
+          li.classList.remove('done');
         }
+      };
+    }
 
-        function toggleComplete(id) {
-            const todo = todos.find(t => t.id === id);
-            if (todo) {
-                todo.completed = !todo.completed;
-                saveTodos();
-                renderTodos();
-            }
-        }
-
-        function deleteTodo(id) {
-            if (confirm('Delete this task?')) {
-                todos = todos.filter(t => t.id !== id);
-                saveTodos();
-                renderTodos();
-            }
-        }
-
-        // ✅ UPDATED: Added Edit button
-        function renderTodos() {
-            const list = document.getElementById('todoList');
-            const filteredTodos = applyFilters(todos);
-            const sortedTodos = sortTodos(filteredTodos);
-            list.innerHTML = sortedTodos.map(todo => `
-                <li class="todo-item ${todo.completed ? 'completed' : ''}">
-                    <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleComplete(${todo.id})">
-                    <div class="todo-content" id="content-${todo.id}">
-                        <div class="todo-text">${todo.text} ${todo.tag ? `<span style="color: #4caf50;">${todo.tag}</span>` : ''}</div>
-                        <div class="todo-date">${todo.date} | Priority: ${todo.priority}</div>
-                    </div>
-                    <div class="todo-actions" id="actions-${todo.id}">
-                        <button onclick="editTodo(${todo.id})">Edit</button>
-                        <button onclick="deleteTodo(${todo.id})">Delete</button>
-                    </div>
-                </li>
-            `).join('');
-
-            updateStats();
-        }
-
-        // ✅ NEW: Edit task
-        function editTodo(id) {
-            const todo = todos.find(t => t.id === id);
-            if (!todo) return;
-
-            const contentDiv = document.getElementById(`content-${id}`);
-            contentDiv.innerHTML = `
-                <input type="text" id="editText-${id}" value="${todo.text}">
-                <input type="date" id="editDate-${id}" value="${todo.date}">
-                <input type="text" id="editTag-${id}" value="${todo.tag}">
-                <select id="editPriority-${id}">
-                    <option value="high" ${todo.priority === 'high' ? 'selected' : ''}>High</option>
-                    <option value="medium" ${todo.priority === 'medium' ? 'selected' : ''}>Medium</option>
-                    <option value="low" ${todo.priority === 'low' ? 'selected' : ''}>Low</option>
-                </select>
-            `;
-
-            const actionsDiv = document.getElementById(`actions-${id}`);
-            actionsDiv.innerHTML = `
-                <button onclick="saveEdit(${id})">Save</button>
-                <button onclick="renderTodos()">Cancel</button>
-            `;
-        }
-
-        // ✅ NEW: Save edited task
-        function saveEdit(id) {
-            const todo = todos.find(t => t.id === id);
-            if (!todo) return;
-
-            const newText = document.getElementById(`editText-${id}`).value.trim();
-            const newDate = document.getElementById(`editDate-${id}`).value;
-            const newTag = document.getElementById(`editTag-${id}`).value.trim();
-            const newPriority = document.getElementById(`editPriority-${id}`).value;
-
-            if (newText) {
-                todo.text = newText;
-                todo.date = newDate || todo.date;
-                todo.tag = newTag;
-                todo.priority = newPriority;
-                saveTodos();
-                renderTodos();
-            }
-        }
-
-        function applyFilters(todos) {
-            const search = document.getElementById('search').value.toLowerCase();
-            const dateFilter = document.getElementById('dateFilter').value;
-
-            return todos.filter(todo => {
-                const matchesSearch = todo.text.toLowerCase().includes(search) || todo.tag.toLowerCase().includes(search);
-                const matchesDate = !dateFilter || todo.date === dateFilter;
-                return matchesSearch && matchesDate;
-            });
-        }
-
-        function sortTodos(todos) {
-            const sortBy = document.getElementById('sort').value;
-            return [...todos].sort((a, b) => {
-                switch (sortBy) {
-                    case 'date':
-                        return new Date(a.date) - new Date(b.date);
-                    case 'priority':
-                        const prio = { high: 3, medium: 2, low: 1 };
-                        return prio[b.priority] - prio[a.priority];
-                    case 'alpha':
-                        return a.text.localeCompare(b.text);
-                    default:
-                        return 0;
-                }
-            });
-        }
-
-        function updateStats() {
-            const completed = todos.filter(t => t.completed).length;
-            document.getElementById('completedCount').textContent = completed;
-            document.getElementById('pendingCount').textContent = todos.length - completed;
-        }
-
-        function toggleView() {
-            const list = document.getElementById('todoList');
-            const calendar = document.getElementById('calendarView');
-            if (list.style.display === 'none') {
-                list.style.display = 'block';
-                calendar.style.display = 'none';
-            } else {
-                list.style.display = 'none';
-                calendar.style.display = 'block';
-            }
-        }
-
-        // Event listeners
-        document.getElementById('newTask').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') addTask();
-        });
-
-        document.getElementById('search').addEventListener('input', renderTodos);
-        document.getElementById('dateFilter').addEventListener('change', renderTodos);
-        document.getElementById('sort').addEventListener('change', renderTodos);
-        document.getElementById('viewAllBtn').addEventListener('click', function() {
-            document.getElementById('search').value = '';
-            document.getElementById('dateFilter').value = '';
-            renderTodos();
-        });
-
-        // Initial render
-        renderTodos();
-    </script>
+    window.onclick = (e) => {
+      if (e.target === taskModal) taskModal.style.display = "none";
+    };
+  </script>
 </body>
 </html>
+
